@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+       #map {
+        height: 600px;
+        width: 100%;
+       }
+    </style>
+  </head>
+  <body>
+    <h3>IRMA UAV Tracking</h3>
+    <div id="map"></div>
+    <script>
+	var pathcomplete = 0;
+	var flightpath = [];
+	var markers = [];
+	var wayPointID = 1;
+	
+	function initMap() {
+		var baseloc = {lat: 45.3985574, lng: -75.7124743};
+		var latitude = 45.3985574;
+		var longitude = -75.7124743;
+		flightpath.push(baseloc);
+		var loc_tracker = null;
+		new QWebChannel(qt.webChannelTransport, function(channel) {
+			loc_tracker = channel.objects.loc_tracker;
+		});
+		
+		var map = new google.maps.Map(document.getElementById('map'), {
+			zoom: 14,
+			center: baseloc
+		});
+		
+		
+		var basemarker = new google.maps.Marker({
+			position: baseloc,
+			map: map,
+			label: 'B',
+			icon: 'http://maps.google.com/mapfiles/ms/icons/green.png'
+		});
+		
+		markers.push(basemarker);
+		
+		var UAVtracker = new google.maps.Marker({
+			position: baseloc,
+			map: map,
+			label: 'U',
+			icon: 'http://maps.google.com/mapfiles/ms/icons/blue.png'
+		});
+
+		map.addListener('click', function(e) {
+			addWaypoint(e.latLng, map, loc_tracker);
+		});
+		
+	}
+	
+		
+
+	function addWaypoint(latLng, map, loc_tracker) {
+		if (!pathcomplete) {
+			var latitude = latLng.lat();
+			var longitude = latLng.lng();
+			
+			
+			var marker = new google.maps.Marker({
+				position: latLng,
+				map: map, 
+				icon: 'http://maps.google.com/mapfiles/ms/icons/red.png',
+				draggable: true,
+				label: wayPointID.toString()
+			});
+			loc_tracker.addtoPath(latitude, longitude, wayPointID);
+			wayPointID++;
+			markers.push(marker);
+			//call function to add waypoint to UAV path
+			
+			marker.addListener('dblclick', function() {
+				if(marker.icon != 'http://maps.google.com/mapfiles/ms/icons/green.png'){
+					remWaypoint(marker.label, loc_tracker);
+				}
+			});
+			marker.addListener('click', function() {
+				//call function to update display on GUI
+			});
+		}
+	}
+	
+	function remWaypoint(id, loc_tracker){
+		if(!pathcomplete){
+			for (var i = 0; i < markers.length; i++) {
+				if (markers[i].label == id) {
+					//Remove the marker from Map                  
+					markers[i].setMap(null);
+					//Remove the marker from array.
+					markers.splice(i, 1);
+					wayPointID--;
+					updateArray();
+					//call function to remove waypoint from UAV path
+					loc_tracker.remPath(id);
+					
+					
+				}
+			}
+		}
+	}
+  
+	function updateArray(){
+		for (var i = 0; i < markers.length; i++) {
+			markers[i].setLabel(i.toString());
+     		}
+	}
+	
+	
+    </script>
+	<script 
+	src="qrc:///qtwebchannel/qwebchannel.js">
+	</script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDZMkDsMhCGqq77xE1-3jbBuT3ucJt8ULM&callback=initMap">
+    </script>
+  </body>
+</html>
